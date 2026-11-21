@@ -27,6 +27,7 @@ export default function SiteHeader({ loggedIn, name }: { loggedIn: boolean; name
       </a>
       <nav className="nav" aria-label="Main">
         {loggedIn && link("/printers", "Printers")}
+        {loggedIn && link("/makerworld", "MakerWorld")}
         {link("/privacy", "Privacy")}
         {loggedIn ? (
           <button type="button" onClick={logout} disabled={busy} title={name ? `Signed in as ${name}` : undefined}>

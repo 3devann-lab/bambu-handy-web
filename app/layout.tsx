@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import SiteHeader from "@/components/SiteHeader";
 import SpatialNav from "@/components/SpatialNav";
+import Disclaimer from "@/components/Disclaimer";
 import { getSession } from "@/lib/session";
 
 export const metadata: Metadata = {
@@ -40,6 +41,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </p>
         </footer>
         <SpatialNav />
+        <Disclaimer />
       </body>
     </html>
   );

@@ -19,8 +19,8 @@ locked-down tablets.
 | 0 | API research → [`API_NOTES.md`](API_NOTES.md) | ✅ |
 | 1 | Log in (password, email code, 2FA) + printer list | ✅ |
 | 2 | Live status (progress, layer, temps, AMS, errors) | ✅ |
-| 3 | Browse & search MakerWorld | ⏳ next |
-| 4 | Send a print with AMS filament mapping | ⏳ (see firmware limits below) |
+| 3 | Browse & search MakerWorld, pick a pre-sliced profile | ✅ |
+| 4 | Send a print with AMS filament mapping + device controls | ✅ (firmware-gated; see below) |
 
 ## Privacy model
 
@@ -128,6 +128,35 @@ relay isn't built. How a poll works (`app/api/printers/[id]/status`,
 Each poll takes 1-8 s of function time, well within Vercel's free-tier limits
 for personal use.
 
+## Browsing MakerWorld and printing
+
+**Browse & search.** The MakerWorld tab lists Trending/Popular/Latest and a few
+categories, with keyword search. Each design page shows the cover gallery,
+creator, stats, licence, and every **print profile** (MakerWorld "instance") the
+creator published, with time, filament weight, colour swatches and which of
+*your* printers it was sliced for (`lib/makerworld.ts`, API_NOTES.md §4). These
+endpoints need no login.
+
+**"Cloud slicing" without a desktop slicer.** A MakerWorld profile is already
+sliced in the cloud, so printing one needs no LAN connection and no local
+slicer: pick a profile, map its filament slots to your AMS trays (auto-matched
+by type and colour, with mismatch warnings), and the app resolves the sliced
+3MF, creates a cloud task and sends the `project_file` command
+(`lib/bambu/print.ts`, API_NOTES.md §5). There is no in-browser slicer for your
+own STLs — slicing needs Bambu Studio.
+
+**Device controls.** Pause, resume, stop, print speed and the chamber light are
+on the printer page (`components/PrinterControls.tsx`).
+
+**The catch (firmware).** Every command above is *unsigned*. Since 2025 most
+firmware only accepts Bambu-signed `print.*` commands, so before sending
+anything the app reads the printer's authorization flags and **refuses on a
+locked printer**, pointing you to Bambu Studio / Handy instead
+(API_NOTES.md §6). It never forges Bambu's signing key, and it doesn't ask you
+to put the printer in LAN mode or downgrade firmware. On printers whose firmware
+still accepts third-party commands, the print and control flow works. This is
+why it's marked experimental.
+
 ## Logging in
 
 * **Email + password.** Bambu may then email a **verification code**
@@ -167,12 +196,15 @@ override is ignored in production builds.
 
 * **Unofficial APIs.** Everything depends on reverse-engineered endpoints. See
   [`API_NOTES.md`](API_NOTES.md), which marks what's verified and what isn't.
-* **Printing on current firmware is blocked by Bambu.** Since 2025, Bambu's
-  firmware requires `print` commands to be signed by Bambu's own apps.
-  Third-party apps can still **read** status but can't **start** prints on
-  printers with authorization control enabled. This app won't work around that
-  by extracting or emulating Bambu's keys. When a printer refuses, the app says
-  so clearly and points to the alternatives. Details:
+* **Printing and control are firmware-gated.** Since 2025, Bambu's firmware
+  requires `print` commands (start, pause, stop, speed) to be signed by Bambu's
+  own apps. Third-party apps can still **read** status but can't **start** or
+  **control** prints on printers with authorization control enabled. This app
+  won't work around that by extracting or emulating Bambu's keys, by LAN mode, or
+  by downgrading firmware. It checks the printer's flags first and refuses with a
+  clear screen that points to the alternatives (Bambu Studio / Handy). The
+  send-print path itself is **unverified on real hardware** and marked
+  experimental. Details:
   [`API_NOTES.md` §6](API_NOTES.md#6-firmware-authorization-who-still-accepts-cloud-commands).
 * **Status updates every few seconds, not instantly.** See the trade-off above.
 * **HMS error codes are shown as codes** with a link to Bambu's wiki, not as
@@ -190,10 +222,17 @@ override is ignored in production builds.
 app/                 Next.js App Router pages and API routes (all stateless)
   api/auth/*         login, email code, 2FA, logout, session
   api/printers       printer list
-  api/printers/[id]/status   live status via a short-lived MQTT connection
-components/          client components (login form, printer list/detail, spatial nav)
-lib/bambu/           Bambu REST + MQTT clients, auth flow, model codes
+  api/printers/[id]/status    live status via a short-lived MQTT connection
+  api/printers/[id]/control   pause/resume/stop/speed/light (firmware-gated)
+  api/printers/[id]/print     firmware pre-flight + start a MakerWorld profile
+  api/makerworld[/id]         MakerWorld feed, search and design detail
+  makerworld[/id]             browse grid and design detail pages
+components/          client components (login, printer list/detail/controls,
+                     MakerWorld browser, design detail, print dialog, disclaimer)
+lib/bambu/           Bambu REST + MQTT clients, auth, models, MakerWorld, print
 lib/status.ts        pure parsing/merging of printer reports (unit-tested)
+lib/makerworld.ts    pure MakerWorld parsing + compatibility (unit-tested)
+lib/print.ts         pure AMS mapping + command builders (unit-tested)
 lib/useLiveStatus.ts browser polling loop
 lib/session.ts       encrypted httpOnly cookie
 tests/               node:test unit tests (`npm test`)

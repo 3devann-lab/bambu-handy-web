@@ -5,6 +5,7 @@ import { api, formatDuration } from "@/lib/client";
 import { SPEED_LABELS, parseStatus, type JobState, type Tray } from "@/lib/status";
 import type { PrinterSummary } from "@/lib/types";
 import { useLiveStatus } from "@/lib/useLiveStatus";
+import PrinterControls from "@/components/PrinterControls";
 
 const STATE_UI: Record<JobState, { tone: string; label: string }> = {
   idle: { tone: "ok", label: "Idle" },
@@ -168,6 +169,15 @@ export default function PrinterDetail({ id }: { id: string }) {
             </section>
           )}
 
+          {!offline && (
+            <PrinterControls
+              deviceId={id}
+              status={status}
+              lightOn={status.chamberLight}
+              onChanged={live.refresh}
+            />
+          )}
+
           <div className="grid">
             <section className="card stack" aria-labelledby="job-h">
               <h2 id="job-h">Current job</h2>
@@ -217,7 +227,12 @@ export default function PrinterDetail({ id }: { id: string }) {
                   </dl>
                 </>
               ) : (
-                <p className="muted">Nothing is printing right now.</p>
+                <div className="stack">
+                  <p className="muted" style={{ margin: 0 }}>Nothing is printing right now.</p>
+                  <a className="btn btn-primary" href="/makerworld" style={{ alignSelf: "flex-start" }}>
+                    Browse MakerWorld to print
+                  </a>
+                </div>
               )}
             </section>
 
