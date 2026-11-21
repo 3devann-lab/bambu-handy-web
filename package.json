@@ -8,12 +8,14 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --experimental-strip-types --no-warnings=MODULE_TYPELESS_PACKAGE_JSON tests/*.test.ts"
   },
   "engines": {
     "node": ">=20.9"
   },
   "dependencies": {
+    "mqtt": "^5.16.1",
     "next": "16.4.6",
     "react": "19.3.1",
     "react-dom": "19.3.1",

@@ -18,8 +18,8 @@ locked-down tablets.
 |---|---|---|
 | 0 | API research → [`API_NOTES.md`](API_NOTES.md) | ✅ |
 | 1 | Log in (password, email code, 2FA) + printer list | ✅ |
-| 2 | Live status (progress, layer, temps, AMS, errors) | ⏳ next |
-| 3 | Browse & search MakerWorld | ⏳ |
+| 2 | Live status (progress, layer, temps, AMS, errors) | ✅ |
+| 3 | Browse & search MakerWorld | ⏳ next |
 | 4 | Send a print with AMS filament mapping | ⏳ (see firmware limits below) |
 
 ## Privacy model
@@ -99,6 +99,35 @@ Open <http://localhost:3000>. To check a production build:
 npm run build && npm start
 ```
 
+## How live status works (and why)
+
+Bambu printers report status over **MQTT over TLS** (`us.mqtt.bambulab.com:8883`).
+Browsers can't open raw TLS sockets, and Vercel functions can't hold a
+connection open between requests. Two designs were considered:
+
+| | Short-lived MQTT per poll (**chosen**) | Companion relay |
+|---|---|---|
+| Hosting | Vercel free tier only | Also needs an always-on server (VPS, Raspberry Pi, Fly.io, …) |
+| Latency | About 4-7 s between updates while printing, 20 s while idle | Sub-second push |
+| Server state | None | Holds MQTT sessions, so it holds tokens in memory |
+| Bambu load | One short connection per poll | One connection per printer |
+
+The polling design matches the privacy goals and the free tier, so the
+relay isn't built. How a poll works (`app/api/printers/[id]/status`,
+`lib/bambu/mqtt.ts`):
+
+1. The function connects with username `u_<uid>` and your token as the
+   password. It subscribes to `device/<id>/report` and listens for a few
+   seconds, then disconnects.
+2. On open, after errors, and every 5 minutes, it also sends `pushall` to get
+   a full snapshot. P1/A1 printers only send changed fields, and Bambu advises
+   against frequent `pushall`s on the P1P.
+3. The browser merges the deltas into the last snapshot (`lib/status.ts`).
+   Polling stops while the tab is hidden.
+
+Each poll takes 1-8 s of function time, well within Vercel's free-tier limits
+for personal use.
+
 ## Logging in
 
 * **Email + password.** Bambu may then email a **verification code**
@@ -112,6 +141,17 @@ npm run build && npm start
   less tested.
 * Sessions last up to about 90 days (Bambu's token lifetime). Bambu offers no
   working token refresh, so you'll be asked to log in again when it expires.
+
+## Tests
+
+```bash
+npm test
+```
+
+These cover report merging, AMS tray parsing, HMS/error code formatting and
+firmware-authorization detection. For manual testing against a local MQTT
+broker, start `npm run dev` with `BHW_DEV_MQTT_URL=mqtt://localhost:1883`. The
+override is ignored in production builds.
 
 ## Accessibility and low-end devices
 
@@ -134,6 +174,9 @@ npm run build && npm start
   by extracting or emulating Bambu's keys. When a printer refuses, the app says
   so clearly and points to the alternatives. Details:
   [`API_NOTES.md` §6](API_NOTES.md#6-firmware-authorization-who-still-accepts-cloud-commands).
+* **Status updates every few seconds, not instantly.** See the trade-off above.
+* **HMS error codes are shown as codes** with a link to Bambu's wiki, not as
+  full text descriptions.
 * **No live camera.** Remote camera streaming uses proprietary P2P SDKs that
   can't run in a browser. The app shows job thumbnails instead.
 * **LAN-only printers** aren't reachable. This is a cloud web app.
@@ -147,9 +190,13 @@ npm run build && npm start
 app/                 Next.js App Router pages and API routes (all stateless)
   api/auth/*         login, email code, 2FA, logout, session
   api/printers       printer list
-components/          client components (login form, printer list, spatial nav)
-lib/bambu/           Bambu REST client, auth flow, model codes
+  api/printers/[id]/status   live status via a short-lived MQTT connection
+components/          client components (login form, printer list/detail, spatial nav)
+lib/bambu/           Bambu REST + MQTT clients, auth flow, model codes
+lib/status.ts        pure parsing/merging of printer reports (unit-tested)
+lib/useLiveStatus.ts browser polling loop
 lib/session.ts       encrypted httpOnly cookie
+tests/               node:test unit tests (`npm test`)
 API_NOTES.md         research notes on Bambu's undocumented API
 ```
 

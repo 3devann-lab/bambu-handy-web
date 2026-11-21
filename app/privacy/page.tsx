@@ -69,6 +69,24 @@ export default function PrivacyPage() {
         </p>
       </section>
 
+      <section className="card stack" id="firmware">
+        <h2>Live status and firmware limits</h2>
+        <p>
+          Live status uses Bambu&apos;s cloud MQTT service. For each update, the server opens a short connection
+          with your token, listens for a few seconds, and disconnects. The browser keeps the latest state. Nothing
+          is cached on the server.
+        </p>
+        <p>
+          Since 2025, Bambu firmware requires print commands (start, pause, stop) to be signed by Bambu&apos;s own
+          apps. Reading status is still open to everyone. This project won&apos;t extract or imitate Bambu&apos;s
+          signing keys, so on printers with that check enabled it only monitors. Details are in{" "}
+          <a href={`${REPO}/blob/main/API_NOTES.md#6-firmware-authorization-who-still-accepts-cloud-commands`}>
+            API_NOTES.md
+          </a>
+          .
+        </p>
+      </section>
+
       <section className="alert warn">
         <h2>Unofficial software</h2>
         <p>
