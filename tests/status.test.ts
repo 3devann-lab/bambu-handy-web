@@ -111,3 +111,9 @@ test("isFullSnapshot", () => {
   assert.equal(isFullSnapshot({ mc_percent: 3 } as never), false);
   assert.equal(isFullSnapshot(fullP1 as never), true);
 });
+
+test("parseStatus reads chamber light from lights_report", () => {
+  assert.equal(parseStatus({ gcode_state: "IDLE", lights_report: [{ node: "chamber_light", mode: "on" }] } as never).chamberLight, true);
+  assert.equal(parseStatus({ gcode_state: "IDLE", lights_report: [{ node: "chamber_light", mode: "off" }] } as never).chamberLight, false);
+  assert.equal(parseStatus({ gcode_state: "IDLE" } as never).chamberLight, null);
+});

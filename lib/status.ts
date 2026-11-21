@@ -90,6 +90,8 @@ export interface PrinterStatus {
   /** Whether the firmware accepts unsigned print commands from third-party apps (API_NOTES.md §6). */
   control: ControlAccess;
   hasCamera: boolean;
+  /** Chamber/frame light: true on, false off, null when the printer doesn't report it. */
+  chamberLight: boolean | null;
   speedLevel: number | null;
   wifiSignal: string;
   stage: number | null;
@@ -200,6 +202,12 @@ export function parseStatus(p: RawPrint): PrinterStatus {
 
   const ipcam = isObj(p.ipcam) ? p.ipcam : null;
 
+  let chamberLight: boolean | null = null;
+  if (Array.isArray(p.lights_report)) {
+    const node = p.lights_report.filter(isObj).find((l) => text(l.node) === "chamber_light" || text(l.node) === "work_light");
+    if (node) chamberLight = text(node.mode).toLowerCase() === "on";
+  }
+
   return {
     state: STATE_MAP[rawState] ?? (rawState ? "unknown" : "unknown"),
     rawState,
@@ -218,6 +226,7 @@ export function parseStatus(p: RawPrint): PrinterStatus {
     hms,
     control: controlAccess(p),
     hasCamera: ipcam ? text(ipcam.ipcam_dev) === "1" : false,
+    chamberLight,
     speedLevel: num(p.spd_lvl),
     wifiSignal: text(p.wifi_signal),
     stage: num(p.mc_print_stage),
