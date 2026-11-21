@@ -106,7 +106,7 @@ export default function PrinterList() {
             const progress = p.task?.progress ?? null;
             return (
               <li key={p.id}>
-                <article className="card printer-card" aria-labelledby={`p-${p.id}`}>
+                <a className="card printer-card" href={`/printers/${encodeURIComponent(p.id)}`} aria-labelledby={`p-${p.id}`}>
                   <div className="row" style={{ alignItems: "flex-start" }}>
                     {active && p.task?.thumbnail ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -158,7 +158,8 @@ export default function PrinterList() {
                       LAN-only mode can&apos;t be reached from here.
                     </p>
                   )}
-                </article>
+                  <p className="open-hint">View live status →</p>
+                </a>
               </li>
             );
           })}
@@ -166,8 +167,8 @@ export default function PrinterList() {
       )}
 
       <p className="muted small">
-        This list refreshes every 30 seconds. Live temperatures, layers, AMS trays and errors are coming in the
-        next phase.
+        This list refreshes every 30 seconds. Open a printer for live progress, layers, temperatures, AMS trays
+        and errors.
       </p>
     </div>
   );

@@ -21,7 +21,8 @@ const IMAGE_HOSTS = [
 const csp = [
   "default-src 'self'",
   // Next.js hydration needs inline bootstrap scripts. No third-party origins are allowed.
-  "script-src 'self' 'unsafe-inline'",
+  // React's dev build needs eval for debugging; production never gets it.
+  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob: ${IMAGE_HOSTS}`,
   "font-src 'self'",
